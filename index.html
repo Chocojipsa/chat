@@ -14,25 +14,36 @@
             margin: 0;
             background-color: #f4f4f4;
         }
-        #chatHistory {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            padding: 10px 0;
-        }
         .chat-container {
             width: 500px;
-            height: 800px; /* 세로 길이를 더 길게 설정 */
+            height: 800px;
             background-color: white;
             border-radius: 10px;
             padding: 20px;
             display: flex;
             flex-direction: column;
-            overflow-y: auto;
+            overflow: hidden;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            position: relative;
         }
-
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 15px;
+            background: white;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        #chatHistory {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px 0;
+            margin: 10px 0;
+            border-top: 1px solid #eee;
+            border-bottom: 1px solid #eee;
+        }
         .message {
             margin: 5px 0;
             padding: 10px;
@@ -40,21 +51,18 @@
             max-width: 80%;
             word-wrap: break-word;
         }
-
         .user-message {
             background-color: #e0f7fa;
-            margin-left: auto; /* 오른쪽 정렬 핵심 속성 */
+            margin-left: auto;
             width: fit-content;
             max-width: 70%;
         }
-
         .bot-message {
             background-color: #f1f1f1;
-            margin-right: auto; /* 왼쪽 정렬 */
+            margin-right: auto;
             width: fit-content;
             max-width: 70%;
         }
-
         input, button {
             padding: 10px;
             margin-top: 10px;
@@ -62,13 +70,11 @@
             border-radius: 5px;
             border: 1px solid #ddd;
         }
-
         button {
             background-color: #007bff;
             color: white;
             cursor: pointer;
         }
-
         button:hover {
             background-color: #0056b3;
         }
@@ -76,50 +82,32 @@
 </head>
 <body>
     <div class="chat-container" id="chatContainer">
-        <h2>Gemini 챗봇</h2>
-        <button id = "reset" style="width: 100px;"> 초기화</button>
+        <div class="chat-header">
+            <h2>GEMINI 챗봇</h2>
+            <button id="reset" style="width: 100px; margin-left: auto;">초기화</button>
+        </div>
         <div id="chatHistory"></div>
-        <input type="text" id="userInput" placeholder="질문을 입력하세요">
-        <button onclick="sendMessage()">보내기</button>
+        <div style="position: sticky; bottom: 0; background: white; padding-top: 10px;">
+            <input type="text" id="userInput" placeholder="질문을 입력하세요">
+            <button onclick="sendMessage()">보내기</button>
+        </div>
     </div>
 
     <script>
         const input = document.querySelector('input[type="text"]');
-
+        const resetButton = document.querySelector("#reset");
+        resetButton.addEventListener("click", function (event){
+            event.preventDefault();
+            const chatHistory = document.getElementById("chatHistory");
+            chatHistory.innerHTML = '';
+            localStorage.removeItem("messages");
+        });
+      
         input.addEventListener('keydown', function(event) {
           if (event.key === 'Enter') {
             sendMessage();
           }
         });
-
-        const resetButton = document.querySelector("#reset");
-        resetButton.addEventListener("click", function (event){
-            event.preventDefault();
-            messages = {};
-            const chatHistory = document.getElementById("chatHistory");
-            chatHistory.innerHTML = '';
-            localStorage.removeItem("messages")
-        })
-        apiKey = process.env.APIKEY;
-        async function useGemeni(userMessage) {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
-            const response = await fetch(url, {
-                method: "POST",
-                body : JSON.stringify({
-                  "contents": [
-                    {
-                    "parts": [{
-                        text: userMessage
-                    }],
-                  },
-                ],
-                },
-            ),
-                headers: {
-                    "Content-Type" : "apllication/json",
-                },
-            });
-        }
 
         async function sendMessage() {
             const userMessage = document.getElementById("userInput").value;
@@ -128,43 +116,22 @@
                 return;
             }
 
-            // Append the user's message to the chat
             appendMessage(userMessage, "user");
 
-            GEMINI_KEY = "AIzaSyBRpPe6DuUbYbFklNBo_hiR2LH2HYeHR24"
-            async function useGemeni(userMessage) {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_KEY}`
-                const response = await fetch(url, {
-                    method: "POST",
-                    body : JSON.stringify({
-                    "contents": [
-                        {
-                        "parts": [{
-                            text: userMessage,
-                        }],
-                    },
-                    ],
-                    },
-                ),
-                    headers: {
-                        "Content-Type" : "apllication/json",
-                    },
-                });
-                const json = await response.json();
-                return await json["candidates"][0]["content"] ["parts"][0]["text"];
-            }
+            const response = await fetch("https://silent-pacific-wasp.glitch.me/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: userMessage })
+            });
 
-            const data = await useGemeni(userMessage);
-            if (data) {
-                appendMessage(data, "bot");
+            const data = await response.json();
+            if (data.reply) {
+                appendMessage(data.reply, "bot");
             } else {
                 appendMessage("오류 발생!", "bot");
             }
 
-            // Clear the input field
             document.getElementById("userInput").value = "";
-
-            // Scroll to the bottom of the chat container
             const chatContainer = document.getElementById("chatContainer");
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
@@ -179,6 +146,7 @@
             messages.push({ message: message, sender: sender });
             localStorage.setItem('messages', JSON.stringify(messages));
         }
+
         function showMessage() {
             const messages = JSON.parse(localStorage.getItem('messages'));
             if (messages) {
@@ -190,13 +158,10 @@
                     chatHistory.appendChild(messageElement);
                 });
             }
-            
         }
 
-        // Call showMessage() on page load to display the saved messages
         showMessage();
-        const chatContainer = document.getElementById("chatContainer");
-        chatContainer.scrollTop = chatContainer.scrollHeight;
     </script>
 </body>
 </html>
+
